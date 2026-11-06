@@ -9,7 +9,8 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "smoke": "bun scripts/smoke.ts",
-    "demo": "bun run demo.ts"
+    "demo": "bun run demo.ts",
+    "modulo": "bun scripts/empaquetar-modulo.ts"
   },
   "dependencies": {
     "zod": "^4.1.0"

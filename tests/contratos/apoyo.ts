@@ -27,6 +27,7 @@ export async function agregarMensaje(ctx: Contexto, id: string, adjunto: string,
 }
 
 type Herramienta = { execute: (args: never, ctx: Contexto) => Promise<string> }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- solo en tests, para leer el JSON de salida sin repetir tipos
 export type Salida = { ok: boolean; data?: Record<string, any>; error?: string; confirmacion?: boolean }
 
 export async function correr(h: Herramienta, args: Record<string, unknown>, ctx: Contexto): Promise<Salida> {
