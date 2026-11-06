@@ -1,5 +1,5 @@
 {
-  "name": "reto-agente",
+  "name": "reto-02-agente-contratos",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,8 @@
     "start": "bun src/server.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "demo": "bun run demo.ts"
   },
   "dependencies": {
     "zod": "^4.1.0"
