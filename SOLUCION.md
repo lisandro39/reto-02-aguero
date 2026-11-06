@@ -52,6 +52,7 @@ El maestro de contratos está congelado desde el 2026-05-30 porque dependía de 
 - **Confirmación humana (CA3) en dos capas:**
   1. `contratos_registrar` rechaza con `requiere revisión: …` si hay campos bajo 0.8 y no viene `confirmado: true`.
   2. El servidor **bloquea `confirmado: true` si el turno anterior no terminó pidiendo confirmación**. El modelo no puede auto-confirmar aunque lo intente: no depende de que obedezca el prompt.
+- **Lote determinista:** `contratos_procesar_buzon({ hoy })` ejecuta validar → registrar para cada mensaje pendiente en orden y devuelve el resultado por mensaje. El modelo solo presenta y pregunta. Lo agregamos tras probar con el modelo real: orquestando 12 llamadas sueltas, Haiku omitió registrar un mensaje limpio e inventó una revisión que ninguna herramienta pidió. Las herramientas del contrato mínimo siguen disponibles para consultas puntuales y para confirmar.
 - El turno que pide confirmación se marca `needsConfirmation` y el front lo resalta con un banner y botones Confirmo / No confirmo.
 - **CA4:** cada llamada queda visible en el chat (nombre, argumentos, resultado) y en `out/log.jsonl`. **CA5:** errores del proveedor o de herramientas se muestran en lenguaje claro y la sesión sigue.
 
@@ -101,6 +102,7 @@ Toda la extracción es **determinista** (`src/dominio/extraccion.ts`). El modelo
 | Adaptador propio sobre `fetch` | Vercel AI SDK / SDK del proveedor | El PRD exige una interfaz propia `enviar(mensajes, herramientas)`; sin SDK el ciclo es explícito y cambiar de proveedor es una variable de entorno. |
 | Bun.serve sin framework HTTP | Hono / Express | Cinco rutas no justifican una dependencia; menos superficie de ataque. Dependencias de producción: solo `zod`. |
 | VPS propio + nginx + pm2 | Render / Vercel gratis | No se duerme en la defensa, HTTPS con Let's Encrypt, el puerto de la app no queda expuesto (escucha en 127.0.0.1). |
+| Herramienta de lote `procesar_buzon` además del contrato mínimo | Que el modelo orqueste validar/registrar mensaje a mensaje | Menos llamadas (más barato y rápido) y sin margen para omitir o inventar pasos; detectado en prueba real. Costo: el modelo tiene menos libertad, que aquí no se necesita. |
 | Duplicados y rechazados se marcan como procesados | No marcarlos | Si no, reaparecen en cada lectura del buzón. No se escribe el maestro. |
 
 ## 8. Supuestos

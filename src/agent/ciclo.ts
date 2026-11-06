@@ -71,12 +71,16 @@ function parsear(salida: string): Record<string, unknown> | null {
   }
 }
 
-/** Por defecto: la herramienta pide confirmación devolviendo `confirmacion: true`. */
+/**
+ * Por defecto: se pide confirmación si la herramienta devuelve `confirmacion: true` (en la raíz o en `data`)
+ * o informa campos en `requiere_revision`.
+ */
 export function confirmacionPorDefecto(_nombre: string, salida: string): boolean {
   const v = parsear(salida)
   if (!v) return false
   const data = v.data && typeof v.data === "object" ? (v.data as Record<string, unknown>) : null
-  return v.confirmacion === true || data?.confirmacion === true
+  const revision = Array.isArray(data?.requiere_revision) && data.requiere_revision.length > 0
+  return v.confirmacion === true || data?.confirmacion === true || revision
 }
 
 export function resumir(salida: string, max = 160): string {

@@ -17,6 +17,6 @@ describe("Bonus · módulo reutilizable", () => {
   test("las herramientas del módulo son las mismas de la app", () => {
     expect(modulo.registrar).toBe(app.registrar)
     expect(modulo.extraer).toBe(app.extraer)
-    expect(Object.keys(modulo).sort()).toEqual(["alertas", "extraer", "leer_buzon", "registrar", "validar"])
+    expect(Object.keys(modulo).sort()).toEqual(["alertas", "extraer", "leer_buzon", "procesar_buzon", "registrar", "validar"])
   })
 })

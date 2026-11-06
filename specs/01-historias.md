@@ -36,3 +36,11 @@
 ## HU-6 · Manejo de errores
 - **HU6-CA1** Texto vacío, fecha inválida o moneda desconocida devuelven `{ ok: false, error }` legible.
 - **HU6-CA2** Ninguna herramienta lanza excepciones; un mensaje malo no impide procesar el siguiente.
+
+## Procesamiento por lote (herramienta adicional `contratos_procesar_buzon`)
+- **LOTE-CA1** Procesa en orden todos los mensajes pendientes (validar y registrar) y deja sin registrar los que requieren revisión, listados en `pendientes_confirmacion` con sus `campos_en_revision`.
+- **LOTE-CA2** Usa `hoy` como fecha de registro, para que el reporte sea coherente con la fecha de referencia del usuario.
+- **LOTE-CA3** Es idempotente: una segunda corrida no duplica nada.
+- **CA3** Si hay pendientes (o una validación informa `requiere_revision`), el turno queda en espera de confirmación humana.
+
+> Motivo: en la prueba con el modelo real, al orquestar 12 llamadas sueltas el agente omitió registrar un mensaje limpio y agregó una "revisión" que ninguna herramienta pidió (violaba CA2). El lote determinista deja al modelo solo la tarea de presentar y preguntar.

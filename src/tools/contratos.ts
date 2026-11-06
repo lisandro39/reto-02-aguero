@@ -110,16 +110,57 @@ export const registrar = {
       return ok(r)
     } catch (e) {
       if (e instanceof ErrorRevision) {
-        const c = e.validacion.contrato
-        const campos = e.validacion.requiere_revision.map((campo) => {
-          const nombre = campo.replace(/^conflicto:/, "") as keyof NonNullable<typeof c>
-          return { campo, valor_propuesto: c ? c[nombre] ?? null : null, confianza: c && nombre in c.confianza ? c.confianza[nombre as keyof typeof c.confianza] : null }
-        })
+        const campos = camposEnRevision(e)
         return JSON.stringify({ ok: false, error: e.message, confirmacion: true, data: { mensaje_id: args.mensaje_id, clasificacion: e.validacion.clasificacion, campos, advertencias: e.validacion.advertencias } })
       }
       if (e instanceof ErrorNegocio) return fallo(e.message)
       return fallo(`Error inesperado: ${e instanceof Error ? e.message : "desconocido"}`)
     }
+  },
+}
+
+function camposEnRevision(e: ErrorRevision) {
+  const c = e.validacion.contrato
+  return e.validacion.requiere_revision.map((campo) => {
+    const nombre = campo.replace(/^conflicto:/, "") as keyof NonNullable<typeof c>
+    return { campo, valor_propuesto: c ? (c[nombre] ?? null) : null, confianza: c && nombre in c.confianza ? c.confianza[nombre as keyof typeof c.confianza] : null }
+  })
+}
+
+export const procesar_buzon = {
+  description: "Procesa en orden todos los mensajes pendientes (validar y registrar cada uno); deja sin registrar los que requieren revisión y devuelve el resultado por mensaje.",
+  args: { hoy: fecha.describe("Fecha de referencia YYYY-MM-DD indicada por el usuario; se usa como fecha de registro") },
+  async execute(args: { hoy: string }, ctx: Contexto): Promise<string> {
+    return seguro(async () => {
+      if (!esFechaValida(args.hoy)) throw new ErrorNegocio(`Fecha de referencia inválida: ${args.hoy} (formato YYYY-MM-DD)`)
+      const procesados = await leerProcesados(ctx.directory)
+      const ids = (await listarMensajes(ctx.directory)).filter((id) => !procesados[id])
+      const resultados = []
+      for (const id of ids) {
+        const correo = await leerCorreo(ctx.directory, id).catch(() => null)
+        const base = { mensaje_id: id, asunto: correo?.asunto ?? "", de: correo?.de ?? "" }
+        try {
+          const v = await validarMensaje(ctx.directory, id)
+          const r = await registrarMensaje(ctx.directory, id, { hoy: args.hoy })
+          resultados.push({ ...base, clasificacion: v.clasificacion, estado: "procesado", ...r, advertencias: v.advertencias })
+        } catch (e) {
+          if (e instanceof ErrorRevision) {
+            resultados.push({
+              ...base,
+              clasificacion: e.validacion.clasificacion,
+              estado: "requiere_confirmacion",
+              id_contrato: e.validacion.contrato?.id_contrato ?? null,
+              campos_en_revision: camposEnRevision(e),
+              advertencias: e.validacion.advertencias,
+            })
+          } else {
+            resultados.push({ ...base, clasificacion: "error", estado: "error", error: e instanceof Error ? e.message : "error desconocido" })
+          }
+        }
+      }
+      const pendientes = resultados.filter((r) => r.estado === "requiere_confirmacion").map((r) => r.mensaje_id)
+      return ok({ hoy: args.hoy, total: resultados.length, resultados, pendientes_confirmacion: pendientes, confirmacion: pendientes.length > 0 })
+    })
   },
 }
 

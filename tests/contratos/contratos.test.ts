@@ -2,7 +2,8 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
 import { readFile, stat } from "node:fs/promises"
 import { join } from "node:path"
-import { alertas, extraer, leer_buzon, registrar, validar } from "../../src/tools/contratos"
+import { alertas, extraer, leer_buzon, procesar_buzon, registrar, validar } from "../../src/tools/contratos"
+import { confirmacionPorDefecto } from "../../src/agent/ciclo"
 import { agregarMensaje, correr, espacio, filas, leer, limpiar } from "./apoyo"
 
 afterAll(limpiar)
@@ -291,5 +292,46 @@ describe("HU-5 · Alertas", () => {
   test("HU5-CA3 hoy inválido devuelve error", async () => {
     const r = await correr(alertas, { hoy: "2026-02-30" }, await espacio())
     expect(r.ok).toBe(false)
+  })
+})
+
+describe("Procesamiento por lote (contratos_procesar_buzon)", () => {
+  test("LOTE-CA1 procesa los 6 mensajes en orden y deja msg-006 pendiente de confirmación", async () => {
+    const ctx = await espacio()
+    const r = await correr(procesar_buzon, { hoy: "2026-09-03" }, ctx)
+    expect(r.ok).toBe(true)
+    const resumen = r.data?.resultados.map((x: { mensaje_id: string; clasificacion: string; estado: string }) => `${x.mensaje_id}:${x.clasificacion}:${x.estado}`)
+    expect(resumen).toEqual([
+      "msg-001:nuevo:procesado",
+      "msg-002:nuevo:procesado",
+      "msg-003:actualizacion:procesado",
+      "msg-004:duplicado:procesado",
+      "msg-005:rechazado:procesado",
+      "msg-006:nuevo:requiere_confirmacion",
+    ])
+    expect(r.data?.pendientes_confirmacion).toEqual(["msg-006"])
+    expect(r.data?.resultados[5].campos_en_revision.map((c: { campo: string }) => c.campo)).toEqual(["valor", "fecha_fin"])
+  })
+
+  test("LOTE-CA2 usa hoy como fecha de registro", async () => {
+    const ctx = await espacio()
+    await correr(procesar_buzon, { hoy: "2026-09-03" }, ctx)
+    const fila = filas(await leer(ctx, ...MAESTRO)).find((f) => f.startsWith("CT-2026-016"))
+    expect(fila).toContain(",2026-09-03,buzon")
+  })
+
+  test("LOTE-CA3 una segunda corrida no duplica nada (todo quedó procesado salvo lo pendiente)", async () => {
+    const ctx = await espacio()
+    await correr(procesar_buzon, { hoy: "2026-09-03" }, ctx)
+    const r = await correr(procesar_buzon, { hoy: "2026-09-03" }, ctx)
+    expect(r.data?.resultados.map((x: { mensaje_id: string }) => x.mensaje_id)).toEqual(["msg-006"])
+  })
+
+  test("CA3 el resultado del lote con pendientes activa la confirmación humana", async () => {
+    const ctx = await espacio()
+    const salida = await procesar_buzon.execute({ hoy: "2026-09-03" }, ctx)
+    expect(confirmacionPorDefecto("contratos_procesar_buzon", salida)).toBe(true)
+    expect(confirmacionPorDefecto("contratos_validar", JSON.stringify({ ok: true, data: { requiere_revision: ["valor"] } }))).toBe(true)
+    expect(confirmacionPorDefecto("contratos_validar", JSON.stringify({ ok: true, data: { requiere_revision: [] } }))).toBe(false)
   })
 })
