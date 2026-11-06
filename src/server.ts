@@ -41,6 +41,7 @@ const CABECERAS_SEGURIDAD: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
   "referrer-policy": "no-referrer",
+  "strict-transport-security": "max-age=31536000",
   "cache-control": "no-store",
 }
 

@@ -2,9 +2,10 @@ import { afterAll, describe, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
 import { readFile, stat } from "node:fs/promises"
 import { join } from "node:path"
-import { alertas, extraer, leer_buzon, procesar_buzon, registrar, validar } from "../../src/tools/contratos"
+import { alertas, extraer, leer_buzon, leer_pdf, procesar_buzon, registrar, validar } from "../../src/tools/contratos"
 import { confirmacionPorDefecto } from "../../src/agent/ciclo"
-import { agregarMensaje, correr, espacio, filas, leer, limpiar } from "./apoyo"
+import { agregarMensaje, correr, espacio, filas, leer, limpiar, pdfMinimo } from "./apoyo"
+import { mkdir, writeFile } from "node:fs/promises"
 
 afterAll(limpiar)
 
@@ -333,5 +334,49 @@ describe("Procesamiento por lote (contratos_procesar_buzon)", () => {
     expect(confirmacionPorDefecto("contratos_procesar_buzon", salida)).toBe(true)
     expect(confirmacionPorDefecto("contratos_validar", JSON.stringify({ ok: true, data: { requiere_revision: ["valor"] } }))).toBe(true)
     expect(confirmacionPorDefecto("contratos_validar", JSON.stringify({ ok: true, data: { requiere_revision: [] } }))).toBe(false)
+  })
+})
+
+describe("P1 · PDF nativo (contratos_leer_pdf)", () => {
+  const LINEAS = [
+    "CONTRATO DE PRESTACION DE SERVICIOS No. CT-2026-905",
+    "Entre ACME ANDINA S.A.S., identificada con NIT 900.111.222-3, con domicilio en Bogota D.C., quien en adelante se denominara EL CONTRATANTE, y PERIFERIA IT GROUP S.A.S.",
+    "PRIMERA. OBJETO. EL CONTRATISTA prestara soporte evolutivo de la plataforma ERP del CONTRATANTE.",
+    "SEGUNDA. VALOR. El valor total es de CINCUENTA MILLONES DE PESOS M/CTE (COP $50.000.000), IVA incluido.",
+    "TERCERA. PLAZO. Desde el primero (1) de septiembre de 2026 hasta el treinta y uno (31) de agosto de 2027.",
+    "Acme Andina S.A.S.                Periferia IT Group S.A.S.",
+  ]
+
+  async function mensajePdf() {
+    const ctx = await espacio()
+    const dir = join(ctx.directory, "fixtures", "reto-02", "buzon", "msg-905")
+    await mkdir(dir, { recursive: true })
+    await writeFile(join(dir, "correo.json"), JSON.stringify({ id: "msg-905", de: "lgomez@periferia-ficticia.com", para: "contratos@periferia-ficticia.com", asunto: "Contrato PDF", fecha: "2026-08-30T10:00:00-05:00", cuerpo: "pdf", adjuntos: ["contrato.pdf"] }))
+    await writeFile(join(dir, "contrato.pdf"), pdfMinimo(LINEAS))
+    return ctx
+  }
+
+  test("P1-CA1 contratos_leer_pdf devuelve el texto respetando líneas", async () => {
+    const r = await correr(leer_pdf, { ruta: "msg-905/contrato.pdf" }, await mensajePdf())
+    expect(r.ok).toBe(true)
+    expect(r.data?.texto.split("\n")[0]).toBe("CONTRATO DE PRESTACION DE SERVICIOS No. CT-2026-905")
+  })
+
+  test("P1-CA2 un contrato en PDF se extrae y registra igual que uno en texto", async () => {
+    const ctx = await mensajePdf()
+    const e = await correr(extraer, { mensaje_id: "msg-905" }, ctx)
+    expect(e.data).toMatchObject({ id_contrato: "CT-2026-905", cliente: "Acme Andina S.A.S.", nit_cliente: "900111222", pais: "CO", valor: 50000000, moneda: "COP", fecha_inicio: "2026-09-01", fecha_fin: "2027-08-31" })
+    const r = await correr(registrar, { mensaje_id: "msg-905", hoy: "2026-09-03" }, ctx)
+    expect(r.data?.ruta_archivo).toBe("Contratos/2026/acme-andina/CT-2026-905.pdf")
+  })
+
+  test("P1-CA3 rechaza rutas fuera del buzón, no-PDF y PDF dañado", async () => {
+    const ctx = await mensajePdf()
+    expect((await correr(leer_pdf, { ruta: "../maestro-contratos.csv" }, ctx)).ok).toBe(false)
+    expect((await correr(leer_pdf, { ruta: "../../../etc/passwd.pdf" }, ctx)).ok).toBe(false)
+    await writeFile(join(ctx.directory, "fixtures/reto-02/buzon/msg-905/roto.pdf"), "no es un pdf")
+    const roto = await correr(leer_pdf, { ruta: "msg-905/roto.pdf" }, ctx)
+    expect(roto.ok).toBe(false)
+    expect(roto.error).toContain("PDF")
   })
 })

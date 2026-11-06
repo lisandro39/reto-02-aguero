@@ -5,7 +5,10 @@
 import { z } from "zod"
 import { fallo, ok, type Contexto } from "../agent/herramientas"
 import { generarAlertas } from "../dominio/alertas"
-import { adjuntoContrato, leerAdjunto, leerCorreo, leerProcesados, listarMensajes, PATRON_MENSAJE } from "../dominio/archivos"
+import { readFile } from "node:fs/promises"
+import { resolve, sep } from "node:path"
+import { adjuntoContrato, leerAdjunto, leerCorreo, leerProcesados, listarMensajes, PATRON_MENSAJE, rutas } from "../dominio/archivos"
+import { textoDePdf } from "../dominio/pdf"
 import { ErrorNegocio, esFechaValida } from "../dominio/comun"
 import { extraerContrato } from "../dominio/extraccion"
 import { ErrorRevision, registrarMensaje, validarMensaje } from "../dominio/registro"
@@ -160,6 +163,22 @@ export const procesar_buzon = {
       }
       const pendientes = resultados.filter((r) => r.estado === "requiere_confirmacion").map((r) => r.mensaje_id)
       return ok({ hoy: args.hoy, total: resultados.length, resultados, pendientes_confirmacion: pendientes, confirmacion: pendientes.length > 0 })
+    })
+  },
+}
+
+export const leer_pdf = {
+  description: "Lee el texto de un PDF nativo adjunto en el buzón (ruta relativa al buzón, p. ej. msg-001/contrato.pdf).",
+  args: { ruta: z.string().min(5).max(200).describe("Ruta relativa al buzón: <mensaje_id>/<archivo>.pdf") },
+  async execute(args: { ruta: string }, ctx: Contexto): Promise<string> {
+    return seguro(async () => {
+      const base = resolve(rutas(ctx.directory).buzon)
+      const destino = resolve(base, args.ruta)
+      if (!destino.startsWith(base + sep) || !/\.pdf$/i.test(destino)) throw new ErrorNegocio("Ruta inválida: debe ser un .pdf dentro del buzón")
+      const bytes = await readFile(destino).catch(() => {
+        throw new ErrorNegocio(`No existe el archivo ${args.ruta}`)
+      })
+      return ok({ ruta: args.ruta, texto: await textoDePdf(new Uint8Array(bytes)) })
     })
   },
 }

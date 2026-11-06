@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit",
     "smoke": "bun scripts/smoke.ts",
     "demo": "bun run demo.ts",
-    "modulo": "bun scripts/empaquetar-modulo.ts"
+    "modulo": "bun scripts/empaquetar-modulo.ts",
+    "e2e": "bun scripts/e2e.ts"
   },
   "dependencies": {
+    "unpdf": "0.12.1",
     "zod": "^4.1.0"
   },
   "devDependencies": {

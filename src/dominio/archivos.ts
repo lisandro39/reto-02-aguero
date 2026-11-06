@@ -2,6 +2,7 @@
 import { appendFile, copyFile, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { ErrorNegocio } from "./comun"
+import { textoDePdf } from "./pdf"
 import { COLUMNAS, type Fila } from "./tipos"
 
 export const PATRON_MENSAJE = /^msg-\d{3}$/
@@ -46,8 +47,11 @@ export function adjuntoContrato(correo: Correo): string | null {
   return correo.adjuntos.find((a) => /^(contrato|otrosi)[^/\\]*\.(txt|pdf)$/i.test(a)) ?? null
 }
 
+/** Texto del adjunto: .txt tal cual; .pdf con texto nativo vía unpdf. */
 export async function leerAdjunto(raiz: string, id: string, adjunto: string): Promise<string> {
-  return readFile(join(rutas(raiz).buzon, id, adjunto), "utf8")
+  const ruta = join(rutas(raiz).buzon, id, adjunto)
+  if (/\.pdf$/i.test(adjunto)) return textoDePdf(new Uint8Array(await readFile(ruta)))
+  return readFile(ruta, "utf8")
 }
 
 export function rutaAdjunto(raiz: string, id: string, adjunto: string): string {

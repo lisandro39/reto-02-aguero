@@ -44,3 +44,8 @@
 - **CA3** Si hay pendientes (o una validación informa `requiere_revision`), el turno queda en espera de confirmación humana.
 
 > Motivo: en la prueba con el modelo real, al orquestar 12 llamadas sueltas el agente omitió registrar un mensaje limpio y agregó una "revisión" que ninguna herramienta pidió (violaba CA2). El lote determinista deja al modelo solo la tarea de presentar y preguntar.
+
+## P1 · PDF nativo (`contratos_leer_pdf`)
+- **P1-CA1** `contratos_leer_pdf({ ruta })` devuelve el texto de un PDF del buzón respetando los saltos de línea.
+- **P1-CA2** Un adjunto `contrato.pdf` se extrae, valida y archiva igual que uno `.txt`.
+- **P1-CA3** Rechaza rutas fuera del buzón, archivos que no son PDF y PDF dañados con un error legible.

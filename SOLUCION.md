@@ -100,7 +100,7 @@ Toda la extracción es **determinista** (`src/dominio/extraccion.ts`). El modelo
 | Guardia de confirmación en el servidor además del prompt | Confiar solo en el prompt | Un prompt se puede ignorar; la guardia hace imposible registrar algo dudoso sin una pregunta previa al usuario. |
 | Sesiones aisladas (cada sesión con su copia de datos) | Un solo `out/` compartido | Con un link público, dos evaluadores se pisarían: el segundo vería el buzón vacío y msg-001 como duplicado. Costo: un poco de disco por sesión. |
 | Adaptador propio sobre `fetch` | Vercel AI SDK / SDK del proveedor | El PRD exige una interfaz propia `enviar(mensajes, herramientas)`; sin SDK el ciclo es explícito y cambiar de proveedor es una variable de entorno. |
-| Bun.serve sin framework HTTP | Hono / Express | Cinco rutas no justifican una dependencia; menos superficie de ataque. Dependencias de producción: solo `zod`. |
+| Bun.serve sin framework HTTP | Hono / Express | Cinco rutas no justifican una dependencia; menos superficie de ataque. Dependencias de producción: `zod` (validación) y `unpdf` (texto de PDF nativo, sin binarios del sistema). |
 | VPS propio + nginx + pm2 | Render / Vercel gratis | No se duerme en la defensa, HTTPS con Let's Encrypt, el puerto de la app no queda expuesto (escucha en 127.0.0.1). |
 | Herramienta de lote `procesar_buzon` además del contrato mínimo | Que el modelo orqueste validar/registrar mensaje a mensaje | Menos llamadas (más barato y rápido) y sin margen para omitir o inventar pasos; detectado en prueba real. Costo: el modelo tiene menos libertad, que aquí no se necesita. |
 | Duplicados y rechazados se marcan como procesados | No marcarlos | Si no, reaparecen en cada lectura del buzón. No se escribe el maestro. |
@@ -121,13 +121,16 @@ Toda la extracción es **determinista** (`src/dominio/extraccion.ts`). El modelo
 | Historia | Estado | Evidencia | Falta para producción |
 |---|---|---|---|
 | HU-1 Leer buzón | Hecho | `tests/contratos` HU1-CA1..3 | Conexión real a Exchange / Graph API |
-| HU-2 Extraer | Hecho | HU2-CA1..5 | Lectura de PDF nativo (P1) y OCR para escaneados |
+| HU-2 Extraer | Hecho | HU2-CA1..5 | OCR para escaneados |
+| P1 `contratos_leer_pdf` | Hecho | P1-CA1..3: PDF nativo con texto; los adjuntos `.pdf` se extraen igual que `.txt` | OCR para escaneados |
 | HU-3 Validar | Hecho | HU3-CA1..5, RN2 | Catálogo de clientes con NIT validado |
 | HU-4 Registrar y archivar | Hecho | HU4-CA1..7, RN4, RN6 | SharePoint real (Graph API) y bloqueo concurrente del Excel |
 | HU-5 Alertas | Hecho | HU5-CA1..3 | Envío programado semanal a gerencia |
 | HU-6 Errores | Hecho | HU6-CA1..2 | Cola de reintentos y alertas operativas |
 | Ciclo CA1–CA5 | Hecho | `tests/plataforma/ciclo.test.ts` | Streaming de respuestas |
 | Bonus módulo reutilizable | Hecho | `modulo/` + test de sincronía | — |
+
+**Prueba E2E con el modelo real:** `bun run e2e -- <url> <código>` ejecuta el prompt de la sección 11 contra el despliegue. Verifica que use herramientas y pida confirmación, confirma y comprueba que el maestro queda con 11 contratos, sin duplicados y con el otrosí aplicado.
 
 **Pruebas automatizadas:** `bun test` corre tests de plataforma (ciclo, adaptadores, API y seguridad) y de negocio (los 6 casos más escenarios negativos y de excepción). Cada test cita su criterio (`HU4-CA1 …`). `demo.ts` verifica el flujo completo sin modelo. GitHub Actions corre typecheck y tests en cada push, y `bun run smoke -- <url> <código>` valida el despliegue.
 
@@ -150,5 +153,6 @@ Toda la extracción es **determinista** (`src/dominio/extraccion.ts`). El modelo
 | El modelo inventa o redondea | Los valores salen solo de herramientas; registrar recalcula todo desde el documento; la guardia de confirmación está en el servidor. |
 | Comerciales no cumplen la regla | Control en facturación (sin contrato no hay primera factura) e indicador mensual de cobertura. |
 | Concurrencia sobre el maestro | En producción, maestro en SharePoint List o base de datos con bloqueo optimista; hoy hay serialización por sesión. |
+| Prompt injection desde el texto de un contrato o correo | El prompt trata el contenido como dato; los valores salen de herramientas deterministas, y registrar algo dudoso exige una confirmación que el servidor valida (el modelo no puede auto-confirmar). |
 | Exposición de datos de contratos | Autenticación corporativa (Entra ID) en lugar de código de acceso, cifrado en reposo y retención según política. |
 | Costo o caída del proveedor | Topes por sesión, reintentos con respaldo y adaptador intercambiable (Anthropic, Gemini o modelo local). |

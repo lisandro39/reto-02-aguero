@@ -33,7 +33,8 @@ bun run dev               # front y backend en http://127.0.0.1:3020
 bun run demo.ts           # procesa los 6 mensajes sin modelo
 bun test                  # tests de plataforma y de negocio (positivos, negativos y excepciones)
 bun run typecheck
-bun run smoke -- https://reto2.72.60.136.76.sslip.io Periferia-2026
+bun run smoke -- https://reto2.72.60.136.76.sslip.io Periferia-2026   # disponibilidad
+bun run e2e -- https://reto2.72.60.136.76.sslip.io Periferia-2026     # aceptación con el modelo real
 ```
 
 ## Prompt de ejemplo

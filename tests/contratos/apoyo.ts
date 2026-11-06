@@ -41,3 +41,25 @@ export async function leer(ctx: Contexto, ...ruta: string[]): Promise<string> {
 export function filas(csv: string): string[] {
   return csv.trim().split("\n").slice(1)
 }
+
+/** PDF mínimo válido (una página, Helvetica) con una línea de texto por elemento. Solo ASCII. */
+export function pdfMinimo(lineas: string[]): Uint8Array {
+  const contenido = ["BT", "/F1 9 Tf", "12 TL", "40 800 Td", ...lineas.map((l) => `(${l.replace(/[()\\]/g, "\\$&")}) Tj T*`), "ET"].join("\n")
+  const objetos = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Length ${contenido.length} >>\nstream\n${contenido}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  ]
+  let pdf = "%PDF-1.4\n"
+  const offsets: number[] = []
+  objetos.forEach((o, i) => {
+    offsets.push(pdf.length)
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`
+  })
+  const xref = pdf.length
+  pdf += `xref\n0 ${objetos.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, "0")} 00000 n \n`).join("")}`
+  pdf += `trailer\n<< /Size ${objetos.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`
+  return new TextEncoder().encode(pdf)
+}
