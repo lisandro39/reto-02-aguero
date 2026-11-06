@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agente</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="barra">
+    <div class="marca">
+      <h1 id="titulo">Agente</h1>
+      <span id="estado" class="estado">conectando…</span>
+    </div>
+    <div class="acciones">
+      <button id="btn-archivos" type="button" class="secundario">Archivos</button>
+      <button id="btn-reiniciar" type="button" class="secundario" title="Borra los datos de esta sesión y empieza de cero">Reiniciar datos</button>
+      <button id="btn-nueva" type="button" class="secundario">Nueva sesión</button>
+    </div>
+  </header>
+
+  <main id="chat" class="chat" aria-live="polite"></main>
+
+  <div id="banner-confirmacion" class="banner oculto" role="alert">
+    <strong>El agente espera tu confirmación.</strong>
+    <span>Revisa el detalle arriba y responde.</span>
+    <div class="banner-botones">
+      <button id="btn-confirmar" type="button">Confirmo</button>
+      <button id="btn-rechazar" type="button" class="secundario">No confirmo</button>
+    </div>
+  </div>
+
+  <form id="formulario" class="entrada">
+    <textarea id="mensaje" rows="2" placeholder="Escribe un mensaje… (Enter envía, Shift+Enter nueva línea)" required></textarea>
+    <button id="btn-enviar" type="submit">Enviar</button>
+  </form>
+
+  <dialog id="dlg-codigo">
+    <form method="dialog" id="form-codigo">
+      <h2>Código de acceso</h2>
+      <p>Este agente está protegido. Ingresa el código indicado en el README.</p>
+      <input id="input-codigo" type="password" autocomplete="off" required>
+      <button type="submit">Entrar</button>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-archivos">
+    <div class="dlg-cabecera">
+      <h2>Archivos generados (out/)</h2>
+      <button id="btn-cerrar-archivos" type="button" class="secundario">Cerrar</button>
+    </div>
+    <ul id="lista-archivos"></ul>
+    <pre id="contenido-archivo"></pre>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
