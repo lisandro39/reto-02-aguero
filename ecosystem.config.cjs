@@ -6,7 +6,7 @@ module.exports = {
     {
       name: "reto2",
       cwd: __dirname,
-      script: "src/server.ts",
+      script: "src/index.ts",
       interpreter: path.join(process.env.HOME || "", ".bun", "bin", "bun"),
       env: { NODE_ENV: "production" },
       autorestart: true,

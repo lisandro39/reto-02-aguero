@@ -241,7 +241,8 @@ export function crearProveedor(config: Config): ProveedorLLM {
   })
 }
 
-if (import.meta.main) {
+/** Arranca el servidor HTTP con la configuración del entorno. */
+export async function iniciar(): Promise<void> {
   const config = cargarConfig()
   const raiz = resolve(import.meta.dir, "..")
   const llm = crearProveedor(config)
@@ -258,3 +259,5 @@ if (import.meta.main) {
     `Servidor en http://${config.HOST}:${servidor.port} · ${llm.proveedor}/${llm.modelo} · herramientas: ${registro.nombres().join(", ") || "ninguna"}`,
   )
 }
+
+if (import.meta.main) await iniciar()
